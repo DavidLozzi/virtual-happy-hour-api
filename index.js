@@ -27,7 +27,7 @@ const getRoom = (roomName) => {
   console.log('creating room', roomName);
   rooms = {...rooms, [roomName]: { roomName, conversations: [], created: new Date() } }
   return rooms[roomName];
-}
+};
 
 let interval;
 io.on('connection', function(socket){
