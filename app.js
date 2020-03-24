@@ -13,7 +13,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 
 app.get('/', function(req, res){
-  res.send({ response: "here we go", req }).status(200)
+  res.send('go to virtualhappyhour.app to use').status(200)
 });
 
 var rooms = {};
@@ -96,6 +96,6 @@ io.on('connection', function(socket){
   });
 });
 
-http.listen(3001, function(){
-  console.log('listening on *:3001');
-});
+app.listen(80);
+
+console.log('Virtual Happy Hour API started on 80');

@@ -1,0 +1,24 @@
+{
+    "family": "nodejs-fargate-task",
+    "networkMode": "awsvpc",
+    "executionRoleArn": "arn:aws:iam::300420735591:role/ecsTaskExecutionRole",
+    "containerDefinitions": [
+        {
+            "name": "nodejs-app",
+            "image": "300420735591.dkr.ecr.us-west-2.amazonaws.com/virtual-happy-hour/nodejs",
+            "portMappings": [
+                {
+                    "containerPort": 80,
+                    "hostPort": 80,
+                    "protocol": "tcp"
+                }
+            ],
+            "essential": true
+        }
+    ],
+    "requiresCompatibilities": [
+        "FARGATE"
+    ],
+    "cpu": "256",
+    "memory": "512"
+}
