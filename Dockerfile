@@ -10,4 +10,6 @@ COPY . .
 
 LABEL maintainer="David Lozzi"
 
+EXPOSE 80
+
 CMD node app.js

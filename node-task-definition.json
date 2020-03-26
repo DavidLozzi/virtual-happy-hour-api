@@ -13,6 +13,14 @@
                     "protocol": "tcp"
                 }
             ],
+            "logConfiguration": {
+                "logDriver": "awslogs",
+                "options": {
+                    "awslogs-group": "/ecs/virtual-happy-hour",
+                    "awslogs-region": "us-west-2",
+                    "awslogs-stream-prefix": "virtual-happy-hour"
+                }
+            },
             "essential": true
         }
     ],

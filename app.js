@@ -1,6 +1,7 @@
 var app = require('express')(),
   cors = require('cors'),
   bodyParser = require('body-parser'),
+  protocol = process.env.PROTOCOL || 'https', // https://blog.usejournal.com/securing-node-js-apps-with-ssl-tls-b3570dbf84a5
   http = require('http').createServer(app),
   io = require('socket.io')(http);
 
@@ -13,7 +14,9 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 
 app.get('/', function(req, res){
-  res.send('go to virtualhappyhour.app to use').status(200)
+  console.log('getting /');
+
+  res.send('Head to virtualhappyhour.app').status(200)
 });
 
 var rooms = {};
@@ -30,6 +33,7 @@ const getRoom = (roomName) => {
 };
 
 let interval;
+
 io.on('connection', function(socket){
   var room = '';
   console.log('a user connected');
@@ -96,6 +100,6 @@ io.on('connection', function(socket){
   });
 });
 
-app.listen(80);
+http.listen(80);
 
-console.log('Virtual Happy Hour API started on 80');
+console.log(`Virtual Happy Hour API has started on 80 at ${Date()}`);
