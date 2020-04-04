@@ -9,7 +9,16 @@ var app = require('express')(),
 // TODO refactor this mess
 
 // TODO move to use a real cache
-
+// app.use(cors({ origin: '*', optionsSuccessStatus: 200 }));
+app.use(function(req, res, next) {
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header('Access-Control-Allow-Methods', 'DELETE, GET, POST, PUT, OPTIONS');
+  res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+  res.header('Access-Control-Allow-Credentials', true);
+  next();
+});
+app.use(bodyParser.urlencoded({ extended: true }));
+app.use(bodyParser.json());
 
 let server;
 let port;
@@ -50,10 +59,6 @@ if (protocol === 'https') {
   port = 80;
 }
 
-app.use(cors({ origin: '*', optionsSuccessStatus: 200 }));
-app.use(bodyParser.urlencoded({ extended: true }));
-app.use(bodyParser.json());
-
 app.get('/', function (req, res) {
   console.log('getting /');
 
@@ -73,50 +78,61 @@ const getRoom = (roomName) => {
   return rooms[roomName];
 };
 
-let interval;
+const updateRoom = (room) => {
+  rooms = {...rooms, [room.roomName]: room};
+};
 
+const emitRoom = (room, io) => {
+  removeEmptyConvos(room);
+  io.to(room.roomName).emit('RoomDetails', room);
+  console.log('sent room', room.roomName, Date.now());
+}
+
+// should refactor to remove confusion
+// room.roomName is the /roomName from URL
+// convo.lobbyName is the /roomName from URL
+// convo.roomName is the unique room name for jitsi
 const io = require('socket.io')(server);
 io.on('connection', function (socket) {
-  var room = '';
   console.log('a user connected');
+  socket.on('error', (error) => {
+    console.log(error);
+  });
 
-  socket.on('SetRoom', (roomName, sendBack) => {
+  socket.on('SetRoom', (roomName) => {
     console.log('setroom', roomName);
     socket.join(roomName);
-    room = getRoom(roomName);
-    console.log('room', room);
-    if (sendBack) sendBack(room);
+    const room = getRoom(roomName);
+    console.log('room', room.roomName);
+    emitRoom(room, io);
   });
 
-  if (interval) {
-    clearInterval(interval);
-  }
-
-  interval = setInterval(() => {
-    // console.log('emitting', room);
-    removeEmptyConvos(room);
-    socket.to(room.roomName).emit('RoomDetails', room);
-    // console.log('send', Date.now());
-  }, 500);
-
-  socket.on('NewConvo', (data, sendBack) => {
+  socket.on('NewConvo', (data) => {
     console.log('newconvo', data);
+    const room = getRoom(data.lobbyName);
     room.conversations.push(data);
-    if (sendBack) sendBack(room.conversations);
+    emitRoom(room, io);
   });
 
-  socket.on('AddParticipant', (data, sendBack) => {
-    console.log('addparticipant', data);
-    room.conversations && room.conversations
-      .filter(c => c.roomName === data.roomName)[0]
-      .participants.push(data.participant);
-    // .forEach(convo => convo.participants.push(data.participant));
-
-    console.log('addparticipant room', room);
-    if (sendBack) sendBack(room.conversations);
+  socket.on('AddParticipant', ({ roomName, convoNumber, participant }) => {
+    console.log('addparticipant', roomName, convoNumber, participant);
+    const room = getRoom(roomName);
+    const convos = room.conversations
+      .map(c => {
+        if(c.convoNumber === convoNumber) {
+          return { ...c, participants: [...c.participants, participant]}
+        } else {
+          return c;
+        }
+      });
+    room.conversations = convos;
+    updateRoom(room);
+    console.log('addparticipant room', room.roomName, convoNumber);
+    console.log(room);
+    emitRoom(room, io);
   });
 
-  socket.on('RemoveFromOtherConvos', (data, sendBack) => {
+  socket.on('RemoveFromOtherConvos', (data) => {
     console.log('removefromotherconvos', data);
     console.log('  room', room);
     room.conversations
@@ -125,18 +141,20 @@ io.on('connection', function (socket) {
         convo.participants.splice(convo.participants.indexOf(data.participant), 1)
       });
 
-    if (sendBack) sendBack(room.conversations);
+    emitRoom(room, io);
   })
 
   socket.on('ClearConvos', () => {
     console.log('clearing convos', room);
     room.conversations = [];
+    emitRoom(room, io);
   })
 
   socket.on('ClearRoom', () => {
     console.log('clearing room', room);
     rooms[room.roomName] = null;
     room = null;
+    emitRoom(room, io);
   })
 
   socket.on('disconnect', function () {
