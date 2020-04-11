@@ -3,12 +3,15 @@ var app = require('express')(),
   bodyParser = require('body-parser'),
   protocol = process.env.PROTOCOL || 'https', // https://blog.usejournal.com/securing-node-js-apps-with-ssl-tls-b3570dbf84a5
   http = require('http'),
-  // io = require('socket.io')(http),
-  fs = require('fs');
+  fs = require('fs'),
+  Redis = require('ioredis'),
+  CONFIG = require('./config');
 
 // TODO refactor this mess
 
-// TODO move to use a real cache
+var redis = new Redis(CONFIG.CACHE_URL);
+console.log('cache connected');
+
 // app.use(cors({ origin: '*', optionsSuccessStatus: 200 }));
 app.use(function (req, res, next) {
   res.header("Access-Control-Allow-Origin", "*");
@@ -65,13 +68,13 @@ app.get('/', function (req, res) {
   res.send('Head to virtualhappyhour.app').status(200)
 });
 
-let rooms = {};
 const lobbyNumber = 0;
 const defaultRoom = (roomName) => ({
   roomName,
   enableConvo: true,
   conversations: [],
-  created: new Date()
+  created: new Date(),
+  updated: new Date()
 });
 // TODO can this define the default structure of a convo and send to FE to create? I think SetRoom could call back and send empty objects?
 
@@ -84,23 +87,31 @@ const removeEmptyConvos = (room) => {
   }
 }
 
-const getRoom = (roomName) => {
-  if (rooms[roomName]) return rooms[roomName];
-  console.log('creating room', roomName);
-  rooms = { ...rooms, [roomName]: defaultRoom(roomName) }
-  return rooms[roomName];
+const getRoom = async (roomName) => {
+  let room;
+  await redis.get(roomName, (err, result) => {
+    if(err) {
+      console.log('get cache error', err);
+    } else {
+      console.log('result', result);
+      if(result) {
+        room = JSON.parse(result);
+      } else {
+        room = defaultRoom(roomName);
+        redis.set(roomName, JSON.stringify(room));
+      }
+    }
+  });
+
+  return room;
 };
 
-const updateRoom = (room) => {
-  rooms = { ...rooms, [room.roomName]: room };
-};
-
-const emitRoom = (room, io) => { // TODO can we remove io from the params?
+const emitRoom = async (room, io) => { // TODO can we remove io from the params?
   console.log('');
   console.log('emitting room');
   console.log(room);
   removeEmptyConvos(room);
-  updateRoom(room);
+  await redis.set(room.roomName, JSON.stringify({ ...room, updated: new Date()}));
   io.to(room.roomName).emit('RoomDetails', room);
   console.log('sent room', room.roomName, Date.now());
 }
@@ -114,27 +125,29 @@ io.on('connection', function (socket) {
   });
 
   // roomName = "string"
-  socket.on('SetRoom', (roomName) => {
-    console.log('setroom', roomName);
-    socket.join(roomName);
-    const room = getRoom(roomName);
-    console.log('room', room.roomName);
-    emitRoom(room, io);
+  socket.on('SetRoom', async (roomName) => {
+    if(roomName) {
+      console.log('setroom', roomName);
+      socket.join(roomName);
+      const room = await getRoom(roomName);
+      console.log('room', room.roomName);
+      emitRoom(room, io);
+    }
   });
 
   // data = { ...converstation, participants: [{ name: '', email: '' }], hosts: [{ { name: '', email: '' } }] }
-  socket.on('NewConvo', (data) => {
+  socket.on('NewConvo', async (data) => {
     console.log('newconvo', data);
-    const room = getRoom(data.roomName);
+    const room = await getRoom(data.roomName);
     if (!room.conversations.some(c => c.convoNumber === data.convoNumber)) {
       room.conversations.push(data);
     }
     emitRoom(room, io);
   });
 
-  socket.on('AddParticipant', ({ roomName, convoNumber, participant }) => {
+  socket.on('AddParticipant', async ({ roomName, convoNumber, participant }) => {
     console.log('addparticipant', roomName, convoNumber, participant);
-    const room = getRoom(roomName);
+    const room = await getRoom(roomName);
     if(participant && participant.email && participant.name) {
       const convos = room.conversations
         .map(c => {
@@ -149,9 +162,9 @@ io.on('connection', function (socket) {
     emitRoom(room, io);
   });
 
-  socket.on('RemoveFromOtherConvos', ({ roomName, convoNumber, participant }) => {
+  socket.on('RemoveFromOtherConvos', async ({ roomName, convoNumber, participant }) => {
     console.log('removefromotherconvos', roomName, convoNumber, participant);
-    const room = getRoom(roomName);
+    const room = await getRoom(roomName);
     const newConvos = room.conversations
       .map(convo => {
         if (convo.convoNumber !== lobbyNumber && convo.convoNumber !== convoNumber && convo.participants.some(p => p.email === participant.email)) {
@@ -163,9 +176,9 @@ io.on('connection', function (socket) {
     emitRoom(room, io);
   });
 
-  socket.on('RemoveMeFromThisConvo', ({ roomName, convoNumber, participant }) => {
+  socket.on('RemoveMeFromThisConvo', async ({ roomName, convoNumber, participant }) => {
     console.log('RemoveMeFromThisConvo', convoNumber, participant);
-    const room = getRoom(roomName);
+    const room = await getRoom(roomName);
     const newConvos = room.conversations
       .map(convo => {
         if (convo.convoNumber === convoNumber && convo.participants.some(p => p.email === participant.email)) {
@@ -178,9 +191,9 @@ io.on('connection', function (socket) {
     emitRoom(room, io);
   });
 
-  socket.on('UpdateRoomProperty', ({ roomName, property, value }) => {
+  socket.on('UpdateRoomProperty', async ({ roomName, property, value }) => {
     console.log('UpdateRoomProperty', property, value);
-    const room = getRoom(roomName);
+    const room = await getRoom(roomName);
     if (property) {
       room[property] = value;
     }

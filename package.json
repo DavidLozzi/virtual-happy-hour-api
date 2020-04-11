@@ -6,7 +6,9 @@
   "dependencies": {
     "body-parser": "^1.19.0",
     "cors": "^2.8.5",
+    "custom-env": "^2.0.1",
     "express": "^4.17.1",
+    "ioredis": "^4.16.2",
     "socket.io": "^2.3.0"
   },
   "devDependencies": {
@@ -14,7 +16,7 @@
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "nodemon server.js",
+    "start": "NODE_ENV=local nodemon server.js",
     "docker": "docker build -t virtual-happy-hour . && docker run -p 443:443 virtual-happy-hour"
   },
   "repository": {
