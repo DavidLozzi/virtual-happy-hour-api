@@ -30,7 +30,7 @@ if (protocol === 'https') {
   console.log('creating https');
   const { execSync } = require('child_process');
   const execOptions = { encoding: 'utf-8', windowsHide: true };
-  let key = './certs/api.virtualhappyhour.app.key';
+  let key = './certs/api.virtualhappyhour.app.key'; // these are my cert files for AWS, code should create local temp ones if needed
   let certificate = './certs/api_virtualhappyhour_app.crt';
 
   if (!fs.existsSync(key) || !fs.existsSync(certificate)) {
@@ -42,8 +42,6 @@ if (protocol === 'https') {
       );
       execSync(`openssl rsa -in ./certs/key.tmp.pem -out ${key}`, execOptions);
       execSync('rm ./certs/key.tmp.pem', execOptions);
-      key = './certs/key.pem';
-      certificate = './certs/certificate.pem';
     } catch (error) {
       console.error(error);
     }
@@ -88,6 +86,7 @@ const removeEmptyConvos = (room) => {
   }
 }
 
+// TODO refactor this to use awaits/asyncs
 const getRoom = (roomName, callback) => {
   let room;
   console.log('getRoom', roomName);
