@@ -105,10 +105,10 @@ const getRoom = (roomName, callback) => {
         }
       }
       if (callback) callback(room);
-      console.log('getRoom done');
+      // console.log('getRoom done');
     });
   } catch (ex) {
-    console.log('getRoom error', ex.toString());
+    console.error('getRoom error', ex.toString());
   }
 };
 
@@ -119,7 +119,7 @@ const emitRoom = (room, io) => { // TODO can we remove io from the params?
   removeEmptyConvos(room);
   redis.set(room.roomName, JSON.stringify({ ...room, updated: new Date() }));
   io.to(room.roomName).emit('RoomDetails', room);
-  console.log('sent room', room.roomName, Date.now());
+  // console.log('sent room', room.roomName, Date.now());
 };
 
 // TODO add call backs to each .on to help redux handle states
@@ -136,17 +136,15 @@ io.on('connection', function (socket) {
       if (roomName) {
         console.log('setroom', roomName);
         socket.join(roomName);
-        console.log('setroom joined socket', roomName)
         getRoom(roomName, (room) => {
-          console.log('room', room.roomName);
           emitRoom(room, io);
         });
       } else {
-        console.log('setroom', 'no roomName provided')
+        console.error('setroom', 'no roomName provided')
       }
     }
     catch (ex) {
-      console.log('SetRoom error', ex.toString());
+      console.error('SetRoom error', ex);
     }
   });
 
@@ -175,7 +173,7 @@ io.on('connection', function (socket) {
           });
         room.conversations = convos;
       } else {
-        console.log('AddParticipant', 'not a valid participant');
+        console.error('AddParticipant', 'not a valid participant');
       }
       emitRoom(room, io);
     });
