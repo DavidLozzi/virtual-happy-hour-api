@@ -9,6 +9,7 @@ var app = require('express')(),
 
 // TODO refactor this mess
 
+console.log('cache connecting to', CONFIG.CACHE_URL);
 var redis = new Redis(CONFIG.CACHE_URL);
 console.log('cache connected');
 
@@ -63,7 +64,7 @@ if (protocol === 'https') {
 }
 
 app.get('/', function (req, res) {
-  console.log('getting /');
+  console.log('getting /', Date.now());
 
   res.send('Head to virtualhappyhour.app').status(200)
 });
@@ -87,34 +88,40 @@ const removeEmptyConvos = (room) => {
   }
 }
 
-const getRoom = async (roomName) => {
+const getRoom = (roomName, callback) => {
   let room;
-  await redis.get(roomName, (err, result) => {
-    if(err) {
-      console.log('get cache error', err);
-    } else {
-      console.log('result', result);
-      if(result) {
-        room = JSON.parse(result);
+  console.log('getRoom', roomName);
+  try {
+    redis.get(roomName, (err, result) => {
+      if (err) {
+        console.log('get cache error', err);
       } else {
-        room = defaultRoom(roomName);
-        redis.set(roomName, JSON.stringify(room));
+        if (result) {
+          console.log('cache result', result);
+          room = JSON.parse(result);
+        } else {
+          console.log('no cache', roomName);
+          room = defaultRoom(roomName);
+          redis.set(roomName, JSON.stringify(room));
+        }
       }
-    }
-  });
-
-  return room;
+      if (callback) callback(room);
+      console.log('getRoom done');
+    });
+  } catch (ex) {
+    console.log('getRoom error', ex.toString());
+  }
 };
 
-const emitRoom = async (room, io) => { // TODO can we remove io from the params?
+const emitRoom = (room, io) => { // TODO can we remove io from the params?
   console.log('');
   console.log('emitting room');
   console.log(room);
   removeEmptyConvos(room);
-  await redis.set(room.roomName, JSON.stringify({ ...room, updated: new Date()}));
+  redis.set(room.roomName, JSON.stringify({ ...room, updated: new Date() }));
   io.to(room.roomName).emit('RoomDetails', room);
   console.log('sent room', room.roomName, Date.now());
-}
+};
 
 // TODO add call backs to each .on to help redux handle states
 const io = require('socket.io')(server);
@@ -125,79 +132,95 @@ io.on('connection', function (socket) {
   });
 
   // roomName = "string"
-  socket.on('SetRoom', async (roomName) => {
-    if(roomName) {
-      console.log('setroom', roomName);
-      socket.join(roomName);
-      const room = await getRoom(roomName);
-      console.log('room', room.roomName);
-      emitRoom(room, io);
+  socket.on('SetRoom', (roomName) => {
+    try {
+      if (roomName) {
+        console.log('setroom', roomName);
+        socket.join(roomName);
+        console.log('setroom joined socket', roomName)
+        getRoom(roomName, (room) => {
+          console.log('room', room.roomName);
+          emitRoom(room, io);
+        });
+      } else {
+        console.log('setroom', 'no roomName provided')
+      }
+    }
+    catch (ex) {
+      console.log('SetRoom error', ex.toString());
     }
   });
 
   // data = { ...converstation, participants: [{ name: '', email: '' }], hosts: [{ { name: '', email: '' } }] }
-  socket.on('NewConvo', async (data) => {
+  socket.on('NewConvo', (data) => {
     console.log('newconvo', data);
-    const room = await getRoom(data.roomName);
-    if (!room.conversations.some(c => c.convoNumber === data.convoNumber)) {
-      room.conversations.push(data);
-    }
-    emitRoom(room, io);
+    getRoom(data.roomName, (room) => {
+      if (!room.conversations.some(c => c.convoNumber === data.convoNumber)) {
+        room.conversations.push(data);
+      }
+      emitRoom(room, io);
+    });
   });
 
-  socket.on('AddParticipant', async ({ roomName, convoNumber, participant }) => {
+  socket.on('AddParticipant', ({ roomName, convoNumber, participant }) => {
     console.log('addparticipant', roomName, convoNumber, participant);
-    const room = await getRoom(roomName);
-    if(participant && participant.email && participant.name) {
-      const convos = room.conversations
-        .map(c => {
-          if (c.convoNumber === convoNumber) {
-            return { ...c, participants: [...c.participants, participant] }
-          } else {
-            return c;
-          }
-        });
-      room.conversations = convos;
-    } // TODO error?
-    emitRoom(room, io);
+    getRoom(roomName, (room) => {
+      if (participant && participant.email && participant.name) {
+        const convos = room.conversations
+          .map(c => {
+            if (c.convoNumber === convoNumber) {
+              return { ...c, participants: [...c.participants, participant] }
+            } else {
+              return c;
+            }
+          });
+        room.conversations = convos;
+      } else {
+        console.log('AddParticipant', 'not a valid participant');
+      }
+      emitRoom(room, io);
+    });
   });
 
-  socket.on('RemoveFromOtherConvos', async ({ roomName, convoNumber, participant }) => {
+  socket.on('RemoveFromOtherConvos', ({ roomName, convoNumber, participant }) => {
     console.log('removefromotherconvos', roomName, convoNumber, participant);
-    const room = await getRoom(roomName);
-    const newConvos = room.conversations
-      .map(convo => {
-        if (convo.convoNumber !== lobbyNumber && convo.convoNumber !== convoNumber && convo.participants.some(p => p.email === participant.email)) {
-          convo.participants.splice(convo.participants.indexOf(participant), 1);
-        }
-        return convo
-      });
-    room.conversations = newConvos;
-    emitRoom(room, io);
+    getRoom(roomName, (room) => {
+      const newConvos = room.conversations
+        .map(convo => {
+          if (convo.convoNumber !== lobbyNumber && convo.convoNumber !== convoNumber && convo.participants.some(p => p.email === participant.email)) {
+            convo.participants.splice(convo.participants.indexOf(participant), 1);
+          }
+          return convo
+        });
+      room.conversations = newConvos;
+      emitRoom(room, io);
+    });
   });
 
-  socket.on('RemoveMeFromThisConvo', async ({ roomName, convoNumber, participant }) => {
+  socket.on('RemoveMeFromThisConvo', ({ roomName, convoNumber, participant }) => {
     console.log('RemoveMeFromThisConvo', convoNumber, participant);
-    const room = await getRoom(roomName);
-    const newConvos = room.conversations
-      .map(convo => {
-        if (convo.convoNumber === convoNumber && convo.participants.some(p => p.email === participant.email)) {
-          convo.participants.splice(convo.participants.indexOf(participant), 1);
-        }
-        return convo
-      });
+    getRoom(roomName, (room) => {
+      const newConvos = room.conversations
+        .map(convo => {
+          if (convo.convoNumber === convoNumber && convo.participants.some(p => p.email === participant.email)) {
+            convo.participants.splice(convo.participants.indexOf(participant), 1);
+          }
+          return convo
+        });
 
-    room.conversations = newConvos;
-    emitRoom(room, io);
+      room.conversations = newConvos;
+      emitRoom(room, io);
+    });
   });
 
-  socket.on('UpdateRoomProperty', async ({ roomName, property, value }) => {
+  socket.on('UpdateRoomProperty', ({ roomName, property, value }) => {
     console.log('UpdateRoomProperty', property, value);
-    const room = await getRoom(roomName);
-    if (property) {
-      room[property] = value;
-    }
-    emitRoom(room, io);
+    getRoom(roomName, (room) => {
+      if (property) {
+        room[property] = value;
+      }
+      emitRoom(room, io);
+    });
   });
 
   socket.on('disconnect', function () { // TODO remove from the room and convos

@@ -1,4 +1,6 @@
-FROM node:12.4-alpine
+# FROM node:12.16
+# FROM node:12.4-alpine
+FROM node:10.5-alpine
 
 RUN mkdir /app
 WORKDIR /app
@@ -12,4 +14,4 @@ LABEL maintainer="David Lozzi"
 
 EXPOSE 80
 
-CMD node app.js
+CMD DEBUG=ioredis:* node app.js
