@@ -5,7 +5,8 @@ var app = require('express')(),
   http = require('http'),
   fs = require('fs'),
   Redis = require('ioredis'),
-  CONFIG = require('./config');
+  CONFIG = require('./config'),
+  uuidv4 = require('uuid').v4;
 
 // TODO refactor this mess
 
@@ -72,6 +73,7 @@ const defaultRoom = (roomName) => ({
   roomName,
   enableConvo: true,
   conversations: [],
+  messages: [],
   created: new Date(),
   updated: new Date()
 });
@@ -218,6 +220,39 @@ io.on('connection', function (socket) {
       }
       emitRoom(room, io);
     });
+  });
+
+  // TODO should we move this into a separate data object per person?
+  socket.on('SendMessage', ({ roomName, to, message, action }) => {
+    console.log('SendMessage', to, message, action);
+    if (to && message) {
+      getRoom(roomName, (room) => {
+        room.messages.push({
+          messageId: uuidv4(),
+          to,
+          message,
+          action
+        });
+        emitRoom(room, io);
+      })
+    }
+  });
+
+  socket.on('SendMessageToAll', ({ roomName, toAll, message, action }) => {
+    console.log('SendMessageToAll', roomName, toAll, message, action);
+    if (toAll && message) {
+      getRoom(roomName, (room) => {
+        toAll.forEach(to => {
+          room.messages.push({
+            messageId: uuidv4(),
+            to,
+            message,
+            action
+          });
+        })
+        emitRoom(room, io);
+      })
+    }
   });
 
   socket.on('disconnect', function () { // TODO remove from the room and convos
