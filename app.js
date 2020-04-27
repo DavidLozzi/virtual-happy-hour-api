@@ -227,12 +227,14 @@ io.on('connection', function (socket) {
     console.log('SendMessage', to, message, action);
     if (to && message) {
       getRoom(roomName, (room) => {
-        room.messages.push({
+        const messages = room.messages || [];
+        messages.push({
           messageId: uuidv4(),
           to,
           message,
           action
         });
+        room.messages = messages;
         emitRoom(room, io);
       })
     }
@@ -243,12 +245,14 @@ io.on('connection', function (socket) {
     if (toAll && message) {
       getRoom(roomName, (room) => {
         toAll.forEach(to => {
-          room.messages.push({
+          const messages = room.messages || [];
+          messages.push({
             messageId: uuidv4(),
             to,
             message,
             action
           });
+          room.messages = messages;
         })
         emitRoom(room, io);
       })
