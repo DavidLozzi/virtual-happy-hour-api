@@ -117,7 +117,7 @@ const deleteRoom = (room) => {
 // TODO refactor this to use awaits/asyncs
 const getRoom = (roomName, callback) => {
   let room;
-  console.log('getRoom', roomName);
+  // console.log('getRoom', roomName);
   try {
     if (roomName) {
       redis.get(roomName, (err, result) => {
@@ -183,7 +183,7 @@ const emitRoom = (room, io) => { // TODO can we remove io from the params?
   redis.set(room.roomName, JSON.stringify({ ...room, updated: new Date() }), 'EX', 300);
   console.log('');
   console.log('emitting room');
-  console.log(room);
+  // console.log(room);
   io.to(room.roomName).emit('RoomDetails', room);
   // console.log('sent room', room.roomName, Date.now());
 };
@@ -215,14 +215,26 @@ io.on('connection', function (socket) {
     }
   });
 
-  // data = converstation
-  socket.on('NewConvo', (data, callback) => {
-    console.log('newconvo', data);
-    getRoom(data.roomName, (room) => {
-      if (!room.conversations.some(c => c.convoNumber === data.convoNumber)) {
-        room.conversations.push(data);
+  socket.on('NewConvo', (convo, callback) => {
+    console.log('newconvo', convo.convoNumber, convo.roomTitle);
+    getRoom(convo.roomName, (room) => {
+      if (!room.conversations.some(c => c.convoNumber === convo.convoNumber)) {
+        room.conversations.push(convo);
       }
-      addParticipantsToRoom(room, data.participants);
+      addParticipantsToRoom(room, convo.participants);
+
+      // now remove the person from other convos
+      // TODO refactor
+      const convos = room.conversations
+        .map(c => {
+          if (c.convoNumber !== convo.convoNumber) {
+            convo.participants.forEach(newParticipant => {
+              c.participants = c.participants.filter(p => p.email !== newParticipant.email);
+            });
+          }
+          return c;
+        });
+      room.conversations = convos;
       emitRoom(room, io);
       if (callback) callback();
     });
@@ -236,6 +248,10 @@ io.on('connection', function (socket) {
           .map(c => {
             if (c.convoNumber === convoNumber) {
               addParticipantToList(c.participants, participant)
+            }
+            if (c.convoNumber !== convoNumber && c.participants.some(p => p.email === participant.email)) {
+              console.log('removing', c.convoNumber, participant.email)
+              c.participants = c.participants.filter(p => p.email !== participant.email);
             }
             return c;
           });
@@ -272,21 +288,6 @@ io.on('connection', function (socket) {
       } else {
         logError('RemoveHost: not a valid participant');
       }
-      emitRoom(room, io);
-    });
-  });
-
-  socket.on('RemoveFromOtherConvos', ({ roomName, convoNumber, participant }) => {
-    console.log('removefromotherconvos', roomName, convoNumber, participant);
-    getRoom(roomName, (room) => {
-      const newConvos = room.conversations
-        .map(convo => {
-          if (convo.convoNumber !== convoNumber && convo.participants.some(p => p.email === participant.email)) {
-            convo.participants = convo.participants.filter(p => p.email !== participant.email);
-          }
-          return convo
-        });
-      room.conversations = newConvos;
       emitRoom(room, io);
     });
   });
