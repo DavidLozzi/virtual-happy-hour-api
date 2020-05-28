@@ -14,4 +14,4 @@ LABEL maintainer="David Lozzi"
 
 EXPOSE 80
 
-CMD DEBUG=ioredis:* node app.js
+CMD node app.js

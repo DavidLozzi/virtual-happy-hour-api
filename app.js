@@ -23,14 +23,14 @@ try {
 } catch (e) {
   logError('can\'t connect to cache', e);
 }
-// app.use(cors({ origin: '*', optionsSuccessStatus: 200 }));
-app.use(function (req, res, next) {
-  res.header("Access-Control-Allow-Origin", "*");
-  res.header('Access-Control-Allow-Methods', 'DELETE, GET, POST, PUT, OPTIONS');
-  res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
-  res.header('Access-Control-Allow-Credentials', true);
-  next();
-});
+app.use(cors({ origin: CONFIG.CORS, optionsSuccessStatus: 200 }));
+// app.use(function (req, res, next) {
+//   res.header("Access-Control-Allow-Origin", CONFIG.CORS);
+//   res.header('Access-Control-Allow-Methods', 'DELETE, GET, POST, PUT, OPTIONS');
+//   res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+//   res.header('Access-Control-Allow-Credentials', true);
+//   next();
+// });
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 
@@ -188,7 +188,6 @@ const emitRoom = (room, io) => { // TODO can we remove io from the params?
   // console.log('sent room', room.roomName, Date.now());
 };
 
-// TODO add call backs to each .on to help redux handle states
 const io = require('socket.io')(server);
 io.on('connection', function (socket) {
   console.log('a user connected', socket.id);
@@ -265,7 +264,7 @@ io.on('connection', function (socket) {
     });
   });
 
-  socket.on('AddHost', ({ roomName, participant }) => {
+  socket.on('AddHost', ({ roomName, participant }, callBack) => {
     console.log('addhost', roomName, participant);
     getRoom(roomName, (room) => {
       if (participant && participant.email && participant.name) {
@@ -276,6 +275,7 @@ io.on('connection', function (socket) {
         logError('AddHost: not a valid participant');
       }
       emitRoom(room, io);
+      if(callBack) callBack();
     });
   });
 
