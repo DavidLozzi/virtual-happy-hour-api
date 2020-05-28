@@ -180,7 +180,7 @@ const removeParticipantFromRoom = (room, participant) => {
 
 const emitRoom = (room, io) => { // TODO can we remove io from the params?
   removeEmptyConvos(room);
-  redis.set(room.roomName, JSON.stringify({ ...room, updated: new Date() }), 'EX', 300);
+  redis.set(room.roomName, JSON.stringify({ ...room, updated: new Date() }), 'EX', 3600); // 1 hour expiration _should_ be enough
   console.log('');
   console.log('emitting room');
   // console.log(room);
