@@ -19,9 +19,11 @@ exports.onDisconnect = (socket) => {
             if (room.participants.some(p => p.primaryConvoNumber === room.conversations[0].convoNumber)) {
               Room.emitRoom(room);
             } else {
+              console.log('disconnect delete room', room.roomName);
               Room.deleteRoom(room);
             }
           } else {
+            console.log('disconnect delete room', room.roomName);
             Room.deleteRoom(room);
           }
         } else {
@@ -34,6 +36,6 @@ exports.onDisconnect = (socket) => {
   }
 };
 
-exports.onError = (error, socket) => {
-  error.log(`${socket.id} socket error`, error);
+exports.onError = (err, socket) => {
+  error.log(`${socket.id} socket error`, err);
 };

@@ -4,7 +4,7 @@ var
   error = require('../utils/error');
 
 exports.onSendMessage = (roomName, to, message, action, socket) => {
-  console.log(socket.id, 'SendMessage', to, message, action);
+  console.log(socket.id, 'SendMessage', to.name, message, action);
   if (to && message) {
     Room.getRoom(roomName, (room) => {
       if (room) {
@@ -26,7 +26,7 @@ exports.onSendMessage = (roomName, to, message, action, socket) => {
 };
 
 exports.onSendMessageToAll = (roomName, toAll, message, action, socket) => {
-  console.log(socket.id, 'SendMessageToAll', roomName, toAll, message, action);
+  console.log(socket.id, 'SendMessageToAll', roomName, toAll.length, message, action);
   if (toAll && message) {
     Room.getRoom(roomName, (room) => {
       if (room) {

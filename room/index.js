@@ -85,7 +85,7 @@ exports.getRoom = (roomName, callback) => {
 };
 
 exports.removeParticipantFromRoom = (room, participant) => {
-  console.log('removing from room', participant.name);
+  console.log('removing from room', participant.name, room.participants.length, room.hosts.length);
   try {
     if (room.participants.some(p => p.email === participant.email)) {
       room.participants = room.participants.filter(p => p.email !== participant.email);
@@ -93,6 +93,7 @@ exports.removeParticipantFromRoom = (room, participant) => {
     if (room.hosts.some(h => h.email === participant.email)) {
       room.hosts= room.hosts.filter(p => p.email !== participant.email);
     }
+    console.log('removed from room', participant.name, room.participants.length, room.hosts.length);
     room.hosts = this.checkForHost(room);
   } catch (e) {
     error.log('removeParticipantFromRoom', e);
@@ -100,9 +101,11 @@ exports.removeParticipantFromRoom = (room, participant) => {
 };
 
 exports.checkForHost = (room) => {
+  console.log('checking for host', room.roomName);
   const newHosts = room.hosts || [];
   if(!room.hosts || room.hosts.length === 0) {
     if(room.participants.length > 0) {
+      console.log('new host added', room.roomName, room.participants[0].name);
       newHosts.push(room.participants[0]);
     }
   }
@@ -111,6 +114,7 @@ exports.checkForHost = (room) => {
 
 exports.deleteRoom = (room) => {
   try {
+    console.log('deleting room', room.roomName);
     Cache.del(room.roomName);
   } catch (e) {
     error.log('deleteRoom', e);

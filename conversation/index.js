@@ -5,7 +5,7 @@ var
 
 exports.onNewConvo = (convo, participant, callback, socket) => {
   try {
-    console.log(socket.id, 'newconvo', convo.convoNumber, convo.roomTitle);
+    console.log(socket.id, 'newconvo', convo.convoNumber, convo.roomTitle, convo.roomName);
     Room.getRoom(convo.roomName, (room) => {
       if (room) {
         if (!room.conversations.some(c => c.convoNumber === convo.convoNumber)) {
@@ -42,13 +42,14 @@ exports.onNewMultiConvo = (roomName, conversations, assigned, socket) => {
 };
 
 exports.removeEmptyConvos = (room) => {
-  console.log('remove empty convos');
+  console.log('remove empty convos, old cnt:', room.conversations.length);
   try {
     if (room) {
       room.conversations = room.conversations.filter(c => {
         if (c.convoNumber === Room.lobbyNumber) return c;
         if (room.participants.some(p => p.primaryConvoNumber === c.convoNumber)) return c;
       });
+      console.log('remove emtpy convos, new cnt:', room.conversations.length);
     } else {
       error.log('removeEmptyConvos received an empty room');
     }
