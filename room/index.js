@@ -87,11 +87,11 @@ exports.getRoom = (roomName, callback) => {
 exports.removeParticipantFromRoom = (room, participant) => {
   console.log('removing from room', participant.name, room.participants.length, room.hosts.length);
   try {
-    if (room.participants.some(p => p.email === participant.email)) {
-      room.participants = room.participants.filter(p => p.email !== participant.email);
+    if (room.participants.some(p => p.userId === participant.userId)) {
+      room.participants = room.participants.filter(p => p.userId !== participant.userId);
     }
-    if (room.hosts.some(h => h.email === participant.email)) {
-      room.hosts= room.hosts.filter(p => p.email !== participant.email);
+    if (room.hosts.some(h => h.userId === participant.userId)) {
+      room.hosts= room.hosts.filter(p => p.userId !== participant.userId);
     }
     console.log('removed from room', participant.name, room.participants.length, room.hosts.length);
     room.hosts = this.checkForHost(room);
