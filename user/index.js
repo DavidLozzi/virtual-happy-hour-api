@@ -15,13 +15,8 @@ exports.onDisconnect = (socket) => {
         if (participant) {
           Room.removeParticipantFromRoom(room, participant);
           Conversation.removeEmptyConvos(room);
-          if (room.conversations && room.conversations.length === 1) {
-            if (room.participants.some(p => p.primaryConvoNumber === room.conversations[0].convoNumber)) {
-              Room.emitRoom(room);
-            } else {
-              console.log('disconnect delete room', room.roomName);
-              Room.deleteRoom(room);
-            }
+          if (room.participants && room.participants.length > 0 && room.conversations && room.conversations.length > 0) {
+            Room.emitRoom(room);
           } else {
             console.log('disconnect delete room', room.roomName);
             Room.deleteRoom(room);
