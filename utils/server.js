@@ -53,7 +53,7 @@ const createServer = (app) => {
       port = 443;
     } else {
       console.log('creating http');
-      server = http.createServer(app)
+      server = http.createServer(app);
       port = 80;
     }
 
@@ -61,6 +61,6 @@ const createServer = (app) => {
   } catch (e) {
     error.log('cant make server', e);
   }
-}
+};
 
 module.exports = createServer;

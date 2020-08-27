@@ -11,7 +11,7 @@ Socket.connect(server);
 
 app.get('/', function (req, res) {
   // console.log('GET /', Date.now());
-  res.send('Oops, how did you get here? Go to <a href="https://virtualhappyhour.app">virtualhappyhour.app</a> to use it.').status(200);
+  res.send('Oops, how did you get here? Go to <a href="https://remoteparty.social">remoteparty.social</a> to use it.').status(200);
 });
 
 server.listen(port);
