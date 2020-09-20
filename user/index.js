@@ -1,5 +1,4 @@
 var Room = require('../room'),
-  Conversation = require('../conversation'),
   error = require('../utils/error');
 
 exports.onConnect = (socket) => {
@@ -14,8 +13,7 @@ exports.onDisconnect = (socket) => {
         let participant = room.participants.find(p => p.id === socket.id);
         if (participant) {
           Room.removeParticipantFromRoom(room, participant);
-          Conversation.removeEmptyConvos(room);
-          if (room.participants && room.participants.length > 0 && room.conversations && room.conversations.length > 0) {
+          if (room.participants && room.participants.length > 0) {
             Room.emitRoom(room);
           } else {
             console.log('disconnect delete room', room.roomName);

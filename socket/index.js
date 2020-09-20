@@ -20,6 +20,7 @@ exports.connect = (server) => {
 
     socket.on('NewConvo', ({ conversation, participant }, callback) => Conversation.onNewConvo(conversation, participant, callback, socket));
     socket.on('NewMultiConvo', ({ roomName, conversations, assigned }) => Conversation.onNewMultiConvo(roomName, conversations, assigned, socket));
+    socket.on('UpdateConvoProperty', ({ convo, property, value }) => Conversation.onUpdateConvoProperty(convo, property, value, socket));
 
     socket.on('AddParticipant', ({ roomName, convoNumber, participant }, callback) => Participant.onAddParticipant(roomName, convoNumber, participant, callback, socket));
     socket.on('AddHost', ({ roomName, participant }, callBack) => Participant.onAddHost(roomName, participant, callBack, socket));

@@ -5,7 +5,7 @@ var
 
 exports.onNewConvo = (convo, participant, callback, socket) => {
   try {
-    console.log(socket.id, 'newconvo', convo.convoNumber, convo.roomTitle, convo.roomName);
+    console.log(socket.id, 'newconvo', convo.persist, convo.convoNumber, convo.roomTitle, convo.roomName);
     Room.getRoom(convo.roomName, (room) => {
       if (room) {
         if (!room.conversations.some(c => c.convoNumber === convo.convoNumber)) {
@@ -41,14 +41,28 @@ exports.onNewMultiConvo = (roomName, conversations, assigned, socket) => {
   });
 };
 
+exports.onUpdateConvoProperty = (convo, property, value, socket) => {
+  console.log(socket.id, 'onUpdateConvoProperty', convo.convoNumber, property, value);
+  if(convo && property) {
+    Room.getRoom(convo.roomName, (room) => {
+      if (room) {
+        try {
+          convo[property] = value;
+          room.conversations = [...room.conversations.filter(c => c.convoNumber !== convo.convoNumber), convo];
+          Room.emitRoom(room);
+        } catch (e) {
+          error.log('onUpdateConvoProperty', e);
+        }
+      }
+    });
+  }
+};
+
 exports.removeEmptyConvos = (room) => {
   console.log('remove empty convos, old cnt:', room.conversations.length);
   try {
     if (room) {
-      room.conversations = room.conversations.filter(c => {
-        if (c.convoNumber === Room.lobbyNumber) return c;
-        if (room.participants.some(p => p.primaryConvoNumber === c.convoNumber)) return c;
-      });
+      room.conversations = room.conversations.filter(c => room.participants.some(p => p.primaryConvoNumber === c.convoNumber || c.persist));
       console.log('remove emtpy convos, new cnt:', room.conversations.length);
     } else {
       error.log('removeEmptyConvos received an empty room');
