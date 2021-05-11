@@ -1,5 +1,9 @@
 # virtual-happy-hour-api
 
+## Retired
+
+I decided to retire this project, [learn more here](https://davidlozzi.com/my-apps/#vhh).
+
 Back end for https://github.com/DavidLozzi/virtual-happy-hour
 
 ## Set up
